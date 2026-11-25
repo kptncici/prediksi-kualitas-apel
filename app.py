@@ -128,9 +128,35 @@ def kunci(fitur):
     return f"input_{fitur}"
 
 
+def kunci_ketik(fitur):
+    return f"ketik_{fitur}"
+
+
+def rapikan(fitur, angka):
+    """Membulatkan ke 2 desimal dan menjaga nilai tetap di dalam rentang dataset."""
+    angka = round(float(angka), 2)
+    return float(np.clip(angka, RENTANG[fitur]["min"], RENTANG[fitur]["max"]))
+
+
+def atur_nilai(fitur, angka):
+    """Slider dan kotak angka selalu diisi bersamaan supaya nilainya sama."""
+    angka = rapikan(fitur, angka)
+    st.session_state[kunci(fitur)] = angka
+    st.session_state[kunci_ketik(fitur)] = angka
+    return angka
+
+
+def salin_dari_slider(fitur):
+    atur_nilai(fitur, st.session_state[kunci(fitur)])
+
+
+def salin_dari_ketik(fitur):
+    atur_nilai(fitur, st.session_state[kunci_ketik(fitur)])
+
+
 def kembalikan_nilai_tengah():
     for fitur in FITUR:
-        st.session_state[kunci(fitur)] = RENTANG[fitur]["median"]
+        atur_nilai(fitur, RENTANG[fitur]["median"])
     st.session_state["contoh"] = None
 
 
@@ -138,10 +164,7 @@ def ambil_contoh():
     baris = dataset.sample(1).iloc[0]
     nilai = {}
     for fitur in FITUR:
-        angka = round(float(baris[fitur]), 2)
-        angka = float(np.clip(angka, RENTANG[fitur]["min"], RENTANG[fitur]["max"]))
-        st.session_state[kunci(fitur)] = angka
-        nilai[fitur] = angka
+        nilai[fitur] = atur_nilai(fitur, baris[fitur])
     st.session_state["contoh"] = {
         "nilai": nilai,
         "label": str(baris["Quality"]),
@@ -151,6 +174,7 @@ def ambil_contoh():
 
 for fitur in FITUR:
     st.session_state.setdefault(kunci(fitur), RENTANG[fitur]["median"])
+    st.session_state.setdefault(kunci_ketik(fitur), st.session_state[kunci(fitur)])
 st.session_state.setdefault("contoh", None)
 
 
@@ -163,8 +187,9 @@ def persen(nilai):
 # ----------------------------------------------------------------------
 st.title("Prediksi Kualitas Apel")
 st.write(
-    "Atur tujuh karakteristik apel. Hasil prediksi langsung berubah "
-    "setiap kali nilai digeser."
+    "Masukkan tujuh karakteristik apel dengan menggeser slider atau mengetik "
+    "angkanya langsung di kotak angka. Hasil prediksi langsung berubah setiap "
+    "kali ada nilai yang diubah."
 )
 
 kolom_input, kolom_hasil = st.columns([3, 2], gap="large")
@@ -173,13 +198,31 @@ with kolom_input:
     st.subheader("Karakteristik apel")
 
     for fitur in FITUR:
-        st.slider(
-            f"{NAMA_FITUR.get(fitur, fitur)} ({fitur})",
-            min_value=float(RENTANG[fitur]["min"]),
-            max_value=float(RENTANG[fitur]["max"]),
-            step=0.01,
-            key=kunci(fitur),
-        )
+        batas_bawah = float(RENTANG[fitur]["min"])
+        batas_atas = float(RENTANG[fitur]["max"])
+        kolom_geser, kolom_ketik = st.columns([3, 1], vertical_alignment="bottom")
+        with kolom_geser:
+            st.slider(
+                f"{NAMA_FITUR.get(fitur, fitur)} ({fitur})",
+                min_value=batas_bawah,
+                max_value=batas_atas,
+                step=0.01,
+                key=kunci(fitur),
+                on_change=salin_dari_slider,
+                args=(fitur,),
+            )
+        with kolom_ketik:
+            st.number_input(
+                f"Ketik nilai {fitur}",
+                min_value=batas_bawah,
+                max_value=batas_atas,
+                step=0.01,
+                format="%.2f",
+                key=kunci_ketik(fitur),
+                on_change=salin_dari_ketik,
+                args=(fitur,),
+                label_visibility="collapsed",
+            )
 
     tombol_kiri, tombol_kanan = st.columns(2)
     with tombol_kiri:
@@ -189,9 +232,9 @@ with kolom_input:
         st.button("Kembalikan ke nilai tengah", on_click=kembalikan_nilai_tengah)
 
     st.caption(
-        "Nilai pada dataset sudah berskala, bukan satuan seperti gram atau sentimeter. "
-        "Batas slider mengikuti nilai terkecil dan terbesar pada dataset, "
-        "dan posisi awalnya adalah nilai tengah (median)."
+        "Nilai pada dataset sudah berskala, bukan satuan seperti gram atau sentimeter, "
+        "jadi angka negatif itu wajar. Batas slider dan kotak angka mengikuti nilai "
+        "terkecil dan terbesar pada dataset, dan posisi awalnya adalah nilai tengah (median)."
     )
 
 # Prediksi
