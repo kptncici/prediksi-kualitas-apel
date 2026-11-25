@@ -36,42 +36,52 @@ NAMA_FITUR = {
 # Batas tampilan skala skor keputusan (khusus model tanpa peluang, misalnya SVM)
 BATAS_SKOR = 4.0
 
-st.set_page_config(page_title="Prediksi Kualitas Apel", page_icon="🍎", layout="wide")
+st.set_page_config(page_title="Prediksi Kualitas Apel", page_icon="🍏", layout="wide")
 
 st.markdown(
     """
     <style>
-      .block-container { max-width: 1050px; padding-top: 2.5rem; }
-      .hasil {
-        border: 1px solid; border-left-width: 8px; border-radius: 12px;
-        padding: 1.1rem 1.3rem; margin-bottom: 1.4rem;
-      }
-      .hasil-good { background: rgba(56, 142, 60, .13); border-color: rgba(56, 142, 60, .8); }
-      .hasil-bad  { background: rgba(211, 47, 47, .13); border-color: rgba(211, 47, 47, .8); }
-      .hasil-judul { font-size: 2.1rem !important; font-weight: 700; line-height: 1.15; }
-      .hasil-sub { margin-top: .4rem; opacity: .85; }
+      .block-container { max-width: 1080px; padding-top: 2.4rem; padding-bottom: 3rem; }
+      h1, h3 { color: #1E5E24 !important; }
+      h1 { letter-spacing: -0.02em; }
 
-      .skala { margin: .2rem 0 .3rem 0; }
-      .skala-trek { position: relative; display: flex; height: 14px; }
-      .skala-bagian { height: 14px; }
-      .skala-bagian:first-child { border-radius: 7px 0 0 7px; }
-      .skala-bagian.terakhir { border-radius: 0 7px 7px 0; }
-      .merah-tua  { background: rgba(211, 47, 47, .70); }
-      .merah-muda { background: rgba(211, 47, 47, .28); }
-      .hijau-muda { background: rgba(56, 142, 60, .28); }
-      .hijau-tua  { background: rgba(56, 142, 60, .70); }
+      /* Dua panel putih di atas latar hijau muda */
+      .st-key-kartu_input, .st-key-kartu_hasil {
+        background: #FFFFFF;
+        border: 1px solid #D3E6C8 !important;
+        border-radius: 18px !important;
+        padding: 1.3rem 1.5rem 1.4rem !important;
+      }
+
+      /* Kotak hasil: satu-satunya bidang berwarna penuh di halaman */
+      .hasil { border-radius: 14px; padding: 1.15rem 1.35rem; margin: .1rem 0 1.4rem 0; }
+      .hasil, .hasil * { color: #FFFFFF !important; }
+      .hasil-good { background: #2E7D32; }
+      .hasil-bad  { background: #B23A32; }
+      .hasil-judul { font-size: 2.05rem !important; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
+      .hasil-sub { margin-top: .4rem; opacity: .92; }
+
+      .skala { margin: .3rem 0 .4rem 0; }
+      .skala-trek { position: relative; display: flex; height: 12px; }
+      .skala-bagian { height: 12px; }
+      .skala-bagian:first-child { border-radius: 6px 0 0 6px; }
+      .skala-bagian.terakhir { border-radius: 0 6px 6px 0; }
+      .merah-tua  { background: #B23A32; }
+      .merah-muda { background: #EDC9C5; }
+      .hijau-muda { background: #C7E3BF; }
+      .hijau-tua  { background: #2E7D32; }
       .skala-tengah {
-        position: absolute; left: 50%; top: -4px; width: 2px; height: 22px;
-        margin-left: -1px; background: currentColor; opacity: .6;
+        position: absolute; left: 50%; top: -5px; width: 2px; height: 22px;
+        margin-left: -1px; background: #1C3322; opacity: .55;
       }
       .skala-penanda {
-        position: absolute; top: -7px; width: 14px; height: 28px; margin-left: -7px;
-        border-radius: 7px; background: currentColor;
-        box-shadow: 0 0 0 3px rgba(128, 128, 128, .35);
+        position: absolute; top: -7px; width: 16px; height: 26px; margin-left: -8px;
+        box-sizing: border-box; border-radius: 8px; background: #FFFFFF;
+        border: 3px solid #1C3322; box-shadow: 0 1px 4px rgba(28, 51, 34, .25);
       }
       .skala-label {
         display: flex; justify-content: space-between;
-        font-size: .85rem; opacity: .8; margin-top: .55rem;
+        font-size: .85rem; color: #5A6E5E; margin-top: .6rem;
       }
     </style>
     """,
@@ -194,7 +204,7 @@ st.write(
 
 kolom_input, kolom_hasil = st.columns([3, 2], gap="large")
 
-with kolom_input:
+with kolom_input, st.container(border=True, key="kartu_input"):
     st.subheader("Karakteristik apel")
 
     for fitur in FITUR:
@@ -245,7 +255,7 @@ kode_prediksi = int(model.predict(masukan)[0])
 label_prediksi = LABEL[kode_prediksi]
 prediksi_good = kode_prediksi == KODE_GOOD
 
-with kolom_hasil:
+with kolom_hasil, st.container(border=True, key="kartu_hasil"):
     st.subheader("Hasil prediksi")
 
     if prediksi_good:
@@ -317,11 +327,13 @@ with kolom_hasil:
         )
         if belum_diubah:
             sesuai = contoh["label"] == label_prediksi
-            st.info(
+            pesan = (
                 f"Ini apel nomor {contoh['nomor']} pada dataset. "
                 f"Label sebenarnya: **{contoh['label']}**. "
                 + ("Prediksi model sesuai." if sesuai else "Prediksi model tidak sesuai.")
             )
+            # Hijau kalau tebakan model benar, kuning kalau meleset
+            (st.success if sesuai else st.warning)(pesan)
 
     with st.expander("Tentang model"):
         metrik = paket.get("metrik_uji", {})
